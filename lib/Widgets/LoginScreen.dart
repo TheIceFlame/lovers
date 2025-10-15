@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:lover/Provider/UserProvider.dart';
+import 'package:lover/Widgets/SelectImagesScreen.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'home_screen.dart';
 import 'SignupScreen.dart';
 import 'ForgotPasswordScreen.dart';
-import 'package:crypto/crypto.dart'; // for hashing passwords
+import 'package:crypto/crypto.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -32,10 +35,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final hashedPassword = _hashPassword(password);
 
     try {
-      // Fetch user by email
       final result = await supabase
           .from('users')
-          .select('id, password')
+          .select('id, name, email, password')
           .eq('email', email);
 
       if (result.isEmpty) {
@@ -47,19 +49,25 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = result[0];
       final storedPassword = user['password'];
 
-      // Check hashed password
       if (hashedPassword != storedPassword) {
         _showError("Invalid email or password");
         setState(() => _loading = false);
         return;
       }
 
-      // Login success
+      // ✅ Save user in provider
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      userProvider.setUser(
+        id: user['id'].toString(),
+        email: user['email'],
+        name: user['name'] ?? '',
+      );
+
+      // ✅ Navigate to Home Screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => HomeScreen()),
       );
-
     } catch (e) {
       _showError("Error: $e");
     }
@@ -87,13 +95,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Container(
                   width: 220,
                   height: 220,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(32),
-                  ),
                   child: Image.asset("assets/images/img.png"),
                 ),
                 const SizedBox(height: 16),
@@ -112,7 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                // Email
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -127,7 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Password
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscureText,
@@ -152,7 +154,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
@@ -172,7 +173,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Login Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -193,7 +193,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Signup Redirect
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

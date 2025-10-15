@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lover/Provider/UserProvider.dart';
 import 'package:lover/Widgets/splash_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 const supabaseUrl = 'https://cqrqhdiuzlwbypfxikau.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxcnFoZGl1emx3YnlwZnhpa2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0MzE4NjUsImV4cCI6MjA3NTAwNzg2NX0.RqpErvHKpcaZX_EhgNGm_Fiib5mTUC5NZLK9i6k8Nio';
@@ -12,7 +14,14 @@ Future<void> main() async {
     anonKey: supabaseKey,
   );
 
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
