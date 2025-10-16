@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 class UserProvider extends ChangeNotifier {
   String? _email;
-  String? _id;
+  String? _id; // user ID
   String? _name;
   List<String> _images = [];
 
   // Individual getters
   String? get email => _email;
-  String? get id => _id;
+  String? get id => _id; // legacy getter
+  String? get userId => _id; // new convenience getter for calendar/Supabase
   String? get name => _name;
   List<String> get images => _images;
 
@@ -52,7 +53,7 @@ class UserProvider extends ChangeNotifier {
   // Check if user is logged in
   bool get isLoggedIn => _id != null;
 
-  // Optional: convenience method to check if a field is set
+  // Optional: convenience methods to check if a field is set
   bool hasEmail() => _email != null;
   bool hasName() => _name != null;
   bool hasImages() => _images.isNotEmpty;

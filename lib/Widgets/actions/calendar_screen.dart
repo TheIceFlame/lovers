@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lover/Provider/UserProvider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -18,7 +21,9 @@ class _CalendarScreenState extends State<CalendarScreen>
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // Store events in a map (day -> list of events)
+  final supabase = Supabase.instance.client;
+
+  // Map of all user events: { day: [event1, event2, ...] }
   Map<DateTime, List<String>> _events = {};
 
   final Color pink = const Color(0xFFFF6F91);
@@ -38,6 +43,9 @@ class _CalendarScreenState extends State<CalendarScreen>
         opacity: 0.2 + _random.nextDouble() * 0.6,
       ));
     }
+
+    // Load user events
+    _loadUserMemories();
   }
 
   @override
@@ -46,7 +54,121 @@ class _CalendarScreenState extends State<CalendarScreen>
     super.dispose();
   }
 
-  // Floating hearts animation
+  DateTime _normalizeDate(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  // 🎯 Fetch all events for the logged-in user
+  Future<void> _loadUserMemories() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userId = userProvider.userId;
+
+    if (userId == null || userId.isEmpty) return;
+
+    try {
+      final response = await supabase
+          .from('love_memories')
+          .select()
+          .eq('user_id', userId)
+          .order('event_date', ascending: true);
+
+      final Map<DateTime, List<String>> loaded = {};
+
+      for (final item in response) {
+        final date = DateTime.parse(item['event_date']);
+        final normalized = _normalizeDate(date);
+        final desc = item['description'] ?? '';
+
+        loaded.putIfAbsent(normalized, () => []).add(desc);
+      }
+
+      setState(() {
+        _events = loaded;
+      });
+    } catch (e) {
+      print('Error loading memories: $e');
+    }
+  }
+
+  List<String> _getEventsForDay(DateTime day) {
+    return _events[_normalizeDate(day)] ?? [];
+  }
+
+  // 💖 Add event both locally and in Supabase
+  void _addEventDialog(DateTime day) {
+    final TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text("Add Love Memory",
+              style: TextStyle(color: pink, fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: "e.g. Romantic dinner, surprise gift...",
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: pink),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: TextStyle(color: blue)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: pink,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                final text = controller.text.trim();
+                if (text.isEmpty) return;
+
+                final date = _normalizeDate(day);
+                final userProvider =
+                Provider.of<UserProvider>(context, listen: false);
+                final userId = userProvider.userId;
+
+                if (userId == null || userId.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('User not logged in'),
+                  ));
+                  return;
+                }
+
+                try {
+                  // Insert into Supabase
+                  await supabase.from('love_memories').insert({
+                    'user_id': userId,
+                    'event_date':
+                    date.toIso8601String().substring(0, 10), // yyyy-MM-dd
+                    'description': text,
+                  });
+
+                  // Update local map
+                  setState(() {
+                    _events.putIfAbsent(date, () => []).add(text);
+                  });
+                } catch (e) {
+                  print('Error adding memory: $e');
+                }
+
+                Navigator.pop(context);
+              },
+              child: const Text("Save", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildFloatingHeart(_Heart heart) {
     return AnimatedBuilder(
       animation: _heartsController,
@@ -74,65 +196,6 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  // Normalize dates to avoid time mismatch
-  DateTime _normalizeDate(DateTime date) =>
-      DateTime(date.year, date.month, date.day);
-
-  // Get events for a given day
-  List<String> _getEventsForDay(DateTime day) {
-    return _events[_normalizeDate(day)] ?? [];
-  }
-
-  // Add event dialog
-  void _addEventDialog(DateTime day) {
-    TextEditingController controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text("Add Love Memory 💞",
-              style: TextStyle(color: pink, fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: "e.g. Romantic dinner, surprise gift...",
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: pink),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel", style: TextStyle(color: blue)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final text = controller.text.trim();
-                if (text.isNotEmpty) {
-                  final date = _normalizeDate(day);
-                  setState(() {
-                    _events.putIfAbsent(date, () => []).add(text);
-                  });
-                }
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: pink,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,7 +208,6 @@ class _CalendarScreenState extends State<CalendarScreen>
       body: Stack(
         children: [
           ..._hearts.map(_buildFloatingHeart),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -168,7 +230,6 @@ class _CalendarScreenState extends State<CalendarScreen>
                   padding: const EdgeInsets.all(12.0),
                   child: Column(
                     children: [
-                      // Calendar
                       TableCalendar(
                         focusedDay: _focusedDay,
                         firstDay: DateTime.utc(2020, 1, 1),
@@ -199,10 +260,6 @@ class _CalendarScreenState extends State<CalendarScreen>
                             color: pink.withOpacity(0),
                             shape: BoxShape.circle,
                           ),
-                          selectedDecoration: BoxDecoration(
-                            color: pink,
-                            shape: BoxShape.circle,
-                          ),
                           weekendTextStyle: TextStyle(color: blue),
                           defaultTextStyle: TextStyle(color: navy),
                           outsideDaysVisible: false,
@@ -212,6 +269,37 @@ class _CalendarScreenState extends State<CalendarScreen>
                           ),
                         ),
                         calendarBuilders: CalendarBuilders(
+                          selectedBuilder: (context, date, _) {
+                            final hasEvents = _getEventsForDay(date).isNotEmpty;
+
+                            if (hasEvents) {
+                              return Center(
+                                child: Text(
+                                  '${date.day}',
+                                  style: TextStyle(
+                                    color: navy,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: pink,
+                                shape: BoxShape.circle,
+                              ),
+                              margin: const EdgeInsets.all(6.0),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${date.day}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          },
                           markerBuilder: (context, date, events) {
                             if (events.isNotEmpty) {
                               return const Positioned(
@@ -235,9 +323,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                           TextStyle(color: navy.withOpacity(0.8)),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       if (_selectedDay != null)
                         Expanded(
                           child: Column(
@@ -254,15 +340,14 @@ class _CalendarScreenState extends State<CalendarScreen>
                                 child: _getEventsForDay(_selectedDay!).isEmpty
                                     ? Center(
                                   child: Text(
-                                    "No memories yet 💔\nAdd one below!",
+                                    "No memories yet \nAdd one below!",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                         color: navy.withOpacity(0.7)),
                                   ),
                                 )
                                     : ListView(
-                                  children: _getEventsForDay(
-                                      _selectedDay!)
+                                  children: _getEventsForDay(_selectedDay!)
                                       .map((event) => Card(
                                     elevation: 2,
                                     shape: RoundedRectangleBorder(
@@ -274,7 +359,8 @@ class _CalendarScreenState extends State<CalendarScreen>
                                     child: ListTile(
                                       leading: const Icon(
                                           Icons.favorite,
-                                          color: Colors.pink),
+                                          color:
+                                          Colors.pinkAccent),
                                       title: Text(
                                         event,
                                         style: TextStyle(
@@ -294,8 +380,8 @@ class _CalendarScreenState extends State<CalendarScreen>
                                     _addEventDialog(_selectedDay!);
                                   }
                                 },
-                                icon: const Icon(Icons.add_rounded),
-                                label: const Text("Add Memory"),
+                                label: const Text("Add Memory",
+                                    style: TextStyle(color: Colors.white)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: pink,
                                   shape: RoundedRectangleBorder(

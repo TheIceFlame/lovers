@@ -10,6 +10,8 @@ import 'ForgotPasswordScreen.dart';
 import 'package:crypto/crypto.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({Key? key}) : super(key: key);
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -23,9 +25,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final supabase = Supabase.instance.client;
 
-  String _hashPassword(String password) {
-    return sha256.convert(utf8.encode(password)).toString();
-  }
+  // Hash password with SHA256
+  String _hashPassword(String password) =>
+      sha256.convert(utf8.encode(password)).toString();
 
   Future<void> _login() async {
     setState(() => _loading = true);
@@ -55,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // ✅ Save user in provider
+      // Save user in provider
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.setUser(
         id: user['id'].toString(),
@@ -63,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
         name: user['name'] ?? '',
       );
 
-      // ✅ Navigate to Home Screen
+      // Navigate to Home Screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => HomeScreen()),
@@ -82,25 +84,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pink = const Color(0xFFFF6F91);
-    final blue = const Color(0xFF4FC3F7);
-    final navy = const Color(0xFF1C1C2E);
+    const pink = Color(0xFFFF6F91);
+    const blue = Color(0xFF4FC3F7);
+    const navy = Color(0xFF1C1C2E);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding:  EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
+                SizedBox(
                   width: 220,
                   height: 220,
                   child: Image.asset("assets/images/img.png"),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Text(
                   "Welcome Back",
                   style: TextStyle(
@@ -109,17 +111,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: navy,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   "Sign in to continue your love journey",
                   style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.mail, color: blue),
+                    prefixIcon:  Icon(Icons.mail, color: blue),
                     hintText: "Email",
                     filled: true,
                     fillColor: Colors.grey[100],
@@ -129,20 +131,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscureText,
                   decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.lock, color: pink),
+                    prefixIcon:  Icon(Icons.lock, color: pink),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureText ? Icons.visibility_off : Icons.visibility,
+                        _obscureText
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         color: Colors.grey,
                       ),
-                      onPressed: () {
-                        setState(() => _obscureText = !_obscureText);
-                      },
+                      onPressed: () =>
+                          setState(() => _obscureText = !_obscureText),
                     ),
                     hintText: "Password",
                     filled: true,
@@ -153,14 +156,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => ForgotPasswordScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => ForgotPasswordScreen()),
                       );
                     },
                     child: Text(
@@ -172,27 +176,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _loading ? null : _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: blue,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding:  EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: _loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
+                        ?  CircularProgressIndicator(color: Colors.white)
+                        :  Text(
                       "Login",
                       style: TextStyle(fontSize: 18, color: Colors.white),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -205,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           MaterialPageRoute(builder: (_) => SignupScreen()),
                         );
                       },
-                      child: Text(
+                      child:  Text(
                         "Sign Up",
                         style: TextStyle(
                           color: pink,
